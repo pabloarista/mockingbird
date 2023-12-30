@@ -92,6 +92,10 @@ struct Function: CustomStringConvertible, CustomDebugStringConvertible, Serializ
             if mutableComponent.starts(with: "@escaping") {
               attributes.insert(.escaping)
               mutableComponent = mutableComponent.dropFirst("@escaping".count)
+            } else if mutableComponent.starts(with: "@Sendable") {
+                mutableComponent = mutableComponent.dropFirst("@Sendable".count)
+            } else if mutableComponent.starts(with: "@convention(block)") {
+                mutableComponent = mutableComponent.dropFirst("@convention(block)".count)
             } else if mutableComponent.starts(with: "@autoclosure") {
               attributes.insert(.autoclosure)
               mutableComponent = mutableComponent.dropFirst("@autoclosure".count)
