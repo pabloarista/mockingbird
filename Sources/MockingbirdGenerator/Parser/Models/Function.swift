@@ -88,12 +88,7 @@ struct Function: CustomStringConvertible, CustomDebugStringConvertible, Serializ
         .filter({ !$0.isEmpty })
         .forEach({ component in
           var mutableComponent = component
-          var previous: Substring? = nil
           while (true) { // TODO: Use SwiftSyntax to properly parse this...
-            if let check = previous, check == mutableComponent {
-                logError("**ERROR** stuck in loop. with \(check)")
-                break
-            }
             if mutableComponent.starts(with: "@escaping") {
               attributes.insert(.escaping)
               mutableComponent = mutableComponent.dropFirst("@escaping".count)
@@ -106,7 +101,7 @@ struct Function: CustomStringConvertible, CustomDebugStringConvertible, Serializ
               mutableComponent = mutableComponent.dropFirst("@autoclosure".count)
             } else if mutableComponent.hasPrefix("@") { // Unknown parameter attribute.
               logWarning("Ignoring unknown parameter attribute \(String(mutableComponent).singleQuoted) in function type declaration \(String(serialized).singleQuoted)")
-              let index = mutableComponent.firstIndex(where: { !$0.isLetter && !$0.isNumber })
+              let index = mutableComponent.dropFirst().firstIndex { !$0.isLetter && !$0.isNumber }
                 ?? mutableComponent.endIndex
               mutableComponent = mutableComponent[index...]
             } else if mutableComponent == "inout" {
@@ -118,7 +113,6 @@ struct Function: CustomStringConvertible, CustomDebugStringConvertible, Serializ
             } else {
               break
             }
-            previous = mutableComponent
           }
           
           guard mutableComponent.hasSuffix("...") else {
