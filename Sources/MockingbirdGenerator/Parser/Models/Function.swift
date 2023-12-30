@@ -88,7 +88,12 @@ struct Function: CustomStringConvertible, CustomDebugStringConvertible, Serializ
         .filter({ !$0.isEmpty })
         .forEach({ component in
           var mutableComponent = component
+          var previous: Substring? = nil
           while (true) { // TODO: Use SwiftSyntax to properly parse this...
+            if let check = previous, check == mutableComponent {
+                logError("**ERROR** stuck in loop. with \(check)")
+                break
+            }
             if mutableComponent.starts(with: "@escaping") {
               attributes.insert(.escaping)
               mutableComponent = mutableComponent.dropFirst("@escaping".count)
@@ -113,6 +118,7 @@ struct Function: CustomStringConvertible, CustomDebugStringConvertible, Serializ
             } else {
               break
             }
+            previous = mutableComponent
           }
           
           guard mutableComponent.hasSuffix("...") else {
