@@ -2984,6 +2984,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D372A597245586DD0000E80A /* MockingbirdCli-Profile.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 			};
 			name = Profile;
 		};
@@ -3162,6 +3163,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 285C8DFE2779E4BB00DE525A /* MockingbirdCommon.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 			};
 			name = Debug;
 		};
@@ -3169,6 +3171,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 285C8DFE2779E4BB00DE525A /* MockingbirdCommon.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 			};
 			name = Release;
 		};
@@ -3176,6 +3179,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 285C8DFE2779E4BB00DE525A /* MockingbirdCommon.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 			};
 			name = Profile;
 		};
@@ -3425,6 +3429,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D372A596245586DD0000E80A /* MockingbirdCli.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 			};
 			name = Debug;
 		};
@@ -3432,6 +3437,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D372A596245586DD0000E80A /* MockingbirdCli.xcconfig */;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 13.5;
 			};
 			name = Release;
 		};
@@ -3662,7 +3668,7 @@
 			repositoryURL = "https://github.com/apple/swift-syntax.git";
 			requirement = {
 				kind = exactVersion;
-				version = 0.50500.0;
+				version = 602.0.0;
 			};
 		};
 		287F852325194EF5007D135D /* XCRemoteSwiftPackageReference "SourceKitten" */ = {

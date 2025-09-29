@@ -2,6 +2,12 @@ import Foundation
 import MockingbirdCommon
 import PathKit
 import SourceKittenFramework
+#if canImport(SwiftParser)
+import SwiftParser
+#endif
+#if canImport(SwiftSyntaxParser)
+import SwiftSyntaxParser
+#endif
 import SwiftSyntax
 
 class ParseSingleFileOperation: BasicOperation {
@@ -96,8 +102,18 @@ class ParseSwiftSyntaxOperation: BasicOperation {
   }
   
   override func run() throws {
-    // File reading is not shared with the parse SourceKit operation, but parsing >> reading.
     let file = try sourcePath.path.getFile()
+    #if canImport(SwiftParser)
+    let sourceFile = Parser.parse(source: file.contents)
+    let parser = SourceFileAuxiliaryParser(with: {
+      SourceLocationConverter(file: "\(self.sourcePath.path)", tree: sourceFile)
+    }).parse(sourceFile)
+    retainForever(parser)
+    
+    // All Swift files implicitly import the Swift standard library.
+    result.importDeclarations = parser.importedPaths.union([ImportDeclaration("Swift")])
+    result.compilationDirectives = parser.directives.sorted()
+    #elseif canImport(SwiftSyntaxParser)
     let sourceFile = try SyntaxParser.parse(source: file.contents)
     let parser = SourceFileAuxiliaryParser(with: {
       SourceLocationConverter(file: "\(self.sourcePath.path)", tree: sourceFile)
@@ -107,6 +123,10 @@ class ParseSwiftSyntaxOperation: BasicOperation {
     // All Swift files implicitly import the Swift standard library.
     result.importDeclarations = parser.importedPaths.union([ImportDeclaration("Swift")])
     result.compilationDirectives = parser.directives.sorted()
+    #else
+    // No parser available; leave results empty and log a warning so generation can continue.
+    logWarning("SwiftSyntax parser module not available; skipping SwiftSyntax parsing for \(self.sourcePath.path.absolute())")
+    #endif
   }
 }
 
@@ -116,3 +136,4 @@ extension Path {
     return try File(contents: String(contentsOf: url, encoding: .utf8))
   }
 }
+

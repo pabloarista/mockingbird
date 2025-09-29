@@ -2,6 +2,12 @@ import Foundation
 import MockingbirdCommon
 import PathKit
 import SwiftSyntax
+#if canImport(SwiftParser)
+import SwiftParser
+#endif
+#if canImport(SwiftSyntaxParser)
+import SwiftSyntaxParser
+#endif
 
 public class FindMockedTypesOperation: BasicOperation {
   public class Result {
@@ -78,22 +84,45 @@ private class ParseTestFileOperation: BasicOperation {
     }
     
     let file = try sourcePath.path.getFile()
-    let sourceFile = try SyntaxParser.parse(source: file.contents)
-    let parser = TestFileParser().parse(sourceFile)
+    
+    #if canImport(SwiftParser)
+    let sourceFile = Parser.parse(source: file.contents)
+    let parser = TestFileParser(viewMode: .sourceAccurate).parse(sourceFile)
     retainForever(parser)
     result.mockedTypeNames = parser.mockedTypeNames
-    log("Parsed \(result.mockedTypeNames.count) referenced mock type\(result.mockedTypeNames.count != 1 ? "s" : "") in \(sourcePath.path.absolute())")
+    #elseif canImport(SwiftSyntaxParser)
+    let sourceFile = try SyntaxParser.parse(source: file.contents)
+    let parser = TestFileParser(viewMode: .sourceAccurate).parse(sourceFile)
+    retainForever(parser)
+    result.mockedTypeNames = parser.mockedTypeNames
+    #else
+    // Fallback: simple textual scan for `mock(SomeType.self)` to preserve pruning behavior.
+    // This is less precise than SwiftSyntax but avoids build breaks when parser modules are missing.
+    let matches = file.contents.components(matching: #"mock\(([^\)]+)\.self\)"#)
+    let extracted = matches.compactMap { comps -> String? in
+      guard comps.count > 1 else { return nil }
+      let raw = String(comps[1])
+      // Strip generic arguments and whitespace
+      let noGenerics = raw.replacingOccurrences(of: #"<[^>]+>"#, with: "", options: .regularExpression)
+      return noGenerics.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    result.mockedTypeNames = Set(extracted)
+    logWarning("SwiftSyntax parser module not available; used textual scan for \(self.sourcePath.path.absolute())")
+    #endif
+    
+    log("Parsed \(self.result.mockedTypeNames.count) referenced mock type\(self.result.mockedTypeNames.count != 1 ? "s" : "") in \(self.sourcePath.path.absolute())")
   }
   
   private func checkCached() throws -> Set<String>? {
     guard let cachedMockedTypeNames = cachedMockedTypeNames else { return nil }
     let currentHash = try sourcePath.path.read().hash()
     guard currentHash == cachedMockedTypeNames.fileHash else {
-      log("Invalidated cached referenced mock types because the test file content hash changed from \(cachedMockedTypeNames.fileHash.singleQuoted) to \(currentHash.singleQuoted) for \(sourcePath.path.absolute())")
+        log("Invalidated cached referenced mock types because the test file content hash changed from \(cachedMockedTypeNames.fileHash.singleQuoted) to \(currentHash.singleQuoted) for \(self.sourcePath.path.absolute())")
       return nil
     }
     
-    log("Using \(cachedMockedTypeNames.typeNames.count) cached referenced mock type\(cachedMockedTypeNames.typeNames.count != 1 ? "s" : "") for \(sourcePath.path.absolute())")
+    log("Using \(cachedMockedTypeNames.typeNames.count) cached referenced mock type\(cachedMockedTypeNames.typeNames.count != 1 ? "s" : "") for \(self.sourcePath.path.absolute())")
     return cachedMockedTypeNames.typeNames
   }
 }
+
