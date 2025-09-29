@@ -52,12 +52,8 @@ private class StandardTestFailer: TestFailer {
         let filePath = file.withUTF8Buffer {
             String(decoding: $0, as: UTF8.self)
         }
-        Issue.record(Comment(rawValue: message),
-                     sourceLocation: Testing.SourceLocation(fileID: "",
-                                                            filePath: filePath,
-                                                            line: Int(line),
-                                                            column: 0))
-#endif // canImport(Testing)
+        Issue.record("\(message) file: \(file) line\(line)")
+#endif
 #if canImport(XCTest)
       XCTFail(message, file: file, line: line)
 #endif
