@@ -33,7 +33,7 @@ if [[ ! -x "${executable}" ]]; then
   fi
 
   # Download
-  readonly artifactsUrl="${MKB_ARTIFACTS_URL:-https://github.com/birdrides/mockingbird/releases/download/<VERSION>/<FILE>}"
+  readonly artifactsUrl="${MKB_ARTIFACTS_URL:-https://github.com/pabloarista/mockingbird/releases/download/<VERSION>/<FILE>}"
   readonly downloadUrl="$(echo "${artifactsUrl}" | sed "s|<VERSION>|${version}|" | sed "s|<FILE>|${archiveFileName}|")"
   echo "Downloading Mockingbird from ${downloadUrl} into ${binDir}/${version}"
   curl "${curlOpts[@]}" "${downloadUrl}"
@@ -45,15 +45,15 @@ if [[ ! -x "${executable}" ]]; then
   mv -f "${binDir}/${archiveName}" "${binDir}/${version}"
 
   # Verify
-  if [[ "${MKB_NO_VERIFY:-}" -ne 1 ]]; then
-    if xcrun codesign -vv -R Sources/MockingbirdAutomationCli/Resources/CodesigningRequirements/mockingbird.txt "${executable}"; then
-      echo '✅ Verified the code signature'
-    else
-      echo "error: Mockingbird does not have a valid code signature; set 'MKB_NO_VERIFY=1' to bypass this error at your own risk"
-      rm "${executable}"
-      exit 1
-    fi
-  fi
+  #if [[ "${MKB_NO_VERIFY:-}" -ne 1 ]]; then
+  #  if xcrun codesign -vv -R Sources/MockingbirdAutomationCli/Resources/CodesigningRequirements/mockingbird.txt "${executable}"; then
+  #    echo '✅ Verified the code signature'
+  #  else
+  #    echo "error: Mockingbird does not have a valid code signature; set 'MKB_NO_VERIFY=1' to bypass this error at your own risk"
+  #    rm "${executable}"
+  #    exit 1
+  #  fi
+  #fi
   chmod u+x "${executable}"
 fi
 

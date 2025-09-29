@@ -11,6 +11,12 @@ struct Function: CustomStringConvertible, CustomDebugStringConvertible, Serializ
       var components = [String]()
       if attributes.contains(.escaping) { components.append("@escaping") }
       if attributes.contains(.autoclosure) { components.append("@autoclosure") }
+      if attributes.contains(.sendable) {
+        components.append("@Sendable")
+      }
+      if attributes.contains(.conventionBlock) {
+        components.append("@convention(block)")
+      }
       if attributes.contains(.inout) { components.append("inout") }
       if attributes.contains(.variadic) {
         components.append("\(type)...")
@@ -27,6 +33,12 @@ struct Function: CustomStringConvertible, CustomDebugStringConvertible, Serializ
         var components = [String]()
         if attributes.contains(.escaping) { components.append("@escaping") }
         if attributes.contains(.autoclosure) { components.append("@autoclosure") }
+        if attributes.contains(.sendable) {
+            components.append("@Sendable")
+        }
+        if attributes.contains(.conventionBlock) {
+            components.append("@convention(block)")
+        }
         if attributes.contains(.inout) { components.append("inout") }
         if attributes.contains(.variadic) {
           components.append(String(reflecting: type) + "...")
@@ -44,6 +56,12 @@ struct Function: CustomStringConvertible, CustomDebugStringConvertible, Serializ
       var components = [String]()
       if attributes.contains(.escaping) { components.append("@escaping") }
       if attributes.contains(.autoclosure) { components.append("@autoclosure") }
+      if attributes.contains(.sendable) {
+        components.append("@Sendable")
+      }
+      if attributes.contains(.conventionBlock) {
+        components.append("@convention(block)")
+      }
       if attributes.contains(.inout) { components.append("inout") }
       if attributes.contains(.variadic) {
         components.append(type.serialize(with: request) + "...")
@@ -93,15 +111,17 @@ struct Function: CustomStringConvertible, CustomDebugStringConvertible, Serializ
               attributes.insert(.escaping)
               mutableComponent = mutableComponent.dropFirst("@escaping".count)
             } else if mutableComponent.starts(with: "@Sendable") {
+                attributes.insert(.sendable)
                 mutableComponent = mutableComponent.dropFirst("@Sendable".count)
             } else if mutableComponent.starts(with: "@convention(block)") {
+                attributes.insert(.conventionBlock)
                 mutableComponent = mutableComponent.dropFirst("@convention(block)".count)
             } else if mutableComponent.starts(with: "@autoclosure") {
               attributes.insert(.autoclosure)
               mutableComponent = mutableComponent.dropFirst("@autoclosure".count)
             } else if mutableComponent.hasPrefix("@") { // Unknown parameter attribute.
               logWarning("Ignoring unknown parameter attribute \(String(mutableComponent).singleQuoted) in function type declaration \(String(serialized).singleQuoted)")
-              let index = mutableComponent.firstIndex(where: { !$0.isLetter && !$0.isNumber })
+              let index = mutableComponent.dropFirst().firstIndex { !$0.isLetter && !$0.isNumber }
                 ?? mutableComponent.endIndex
               mutableComponent = mutableComponent[index...]
             } else if mutableComponent == "inout" {

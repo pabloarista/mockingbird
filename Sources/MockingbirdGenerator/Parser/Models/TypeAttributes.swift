@@ -103,6 +103,9 @@ struct Attributes: OptionSet, Hashable {
   static let closure = Attributes(rawValue: 1 << 17)
   static let escaping = Attributes(rawValue: 1 << 18)
   static let autoclosure = Attributes(rawValue: 1 << 19)
+    
+  static let sendable = Attributes(rawValue: 1 << 20)
+  static let conventionBlock = Attributes(rawValue: 1 << 21)
   
   // MARK: Custom attributes
   static let implicit = Attributes(rawValue: 1 << 20)
