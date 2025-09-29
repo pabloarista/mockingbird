@@ -1,5 +1,10 @@
 import Foundation
+#if canImport(XCTest)
 import XCTest
+#endif
+#if canImport(Testing)
+import Testing
+#endif
 
 /// A type that can handle test failures emitted by Mockingbird.
 public protocol TestFailer {
@@ -43,7 +48,20 @@ func FailTest(_ message: String, isFatal: Bool = false,
 private class StandardTestFailer: TestFailer {
   func fail(message: String, isFatal: Bool, file: StaticString, line: UInt) {
     guard isFatal else {
-      return XCTFail(message, file: file, line: line)
+#if canImport(Testing)
+        let filePath = file.withUTF8Buffer {
+            String(decoding: $0, as: UTF8.self)
+        }
+        Issue.record(Comment(rawValue: message),
+                     sourceLocation: Testing.SourceLocation(fileID: "",
+                                                            filePath: filePath,
+                                                            line: Int(line),
+                                                            column: 0))
+#endif // canImport(Testing)
+#if canImport(XCTest)
+      XCTFail(message, file: file, line: line)
+#endif
+        return
     }
     
     // Raise an Objective-C exception to stop the test runner.
