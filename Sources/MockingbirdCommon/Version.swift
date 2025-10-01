@@ -1,7 +1,7 @@
 import Foundation
 
 /// The current version of Mockingbird.
-public let mockingbirdVersion = Version(shortString: "0.20.0")
+public let mockingbirdVersion = Version(shortString: "1.0.2")
 
 /// A comparable semantic version.
 public struct Version: Comparable, CustomStringConvertible {
