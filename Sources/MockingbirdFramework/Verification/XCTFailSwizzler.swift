@@ -48,14 +48,19 @@ func FailTest(_ message: String, isFatal: Bool = false,
 private class StandardTestFailer: TestFailer {
   func fail(message: String, isFatal: Bool, file: StaticString, line: UInt) {
     guard isFatal else {
+        let isXCTest = NSClassFromString("XCTest") != nil
 #if canImport(Testing)
-        let filePath = file.withUTF8Buffer {
-            String(decoding: $0, as: UTF8.self)
+        if !isXCTest {
+            let filePath = file.withUTF8Buffer {
+                String(decoding: $0, as: UTF8.self)
+            }
+            Issue.record("\(message) file: \(filePath) line\(line)")
         }
-        Issue.record("\(message) file: \(file) line\(line)")
-#endif
+#endif // canImport(Testing)
 #if canImport(XCTest)
-      XCTFail(message, file: file, line: line)
+        if isXCTest {
+            XCTFail(message, file: file, line: line)
+        }
 #endif
         return
     }
