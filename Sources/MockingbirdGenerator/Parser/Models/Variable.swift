@@ -8,6 +8,7 @@ struct Variable: Hashable, Comparable {
   let accessLevel: AccessLevel
   let setterAccessLevel: AccessLevel
   let attributes: Attributes
+  let getterEffectSpecifiers: EffectSpecifiers
   let compilationDirectives: [CompilationDirective]
   let isOverridable: Bool
   let hasSelfConstraint: Bool
@@ -82,9 +83,14 @@ struct Variable: Hashable, Comparable {
                                                         context: serializationContext,
                                                         options: .standard)
     let qualifiedTypeName = declaredType.serialize(with: qualifiedTypeNameRequest)
+    let getterEffectSpecifiers = Variable
+      .parseGetterEffectSpecifiers(from: dictionary, source: source)
+      .serialized(with: qualifiedTypeNameRequest)
     self.typeName = qualifiedTypeName
+    self.getterEffectSpecifiers = getterEffectSpecifiers
     self.hasSelfConstraint =
       qualifiedTypeName.contains(SerializationRequest.Constants.selfTokenIndicator)
+      || getterEffectSpecifiers.hasSelfConstraint
     
     self.name = name
     self.kind = kind
@@ -145,16 +151,46 @@ struct Variable: Hashable, Comparable {
     // Use a slightly modified version of Sourcery's type inference system.
     return inferType(from: cleanedDeclaration)
   }
+  
+  private static func parseGetterEffectSpecifiers(from dictionary: StructureDictionary,
+                                                  source: Data?) -> EffectSpecifiers {
+    guard let declaration = SourceSubstring.declaration.extract(from: dictionary, contents: source)
+      ?? SourceSubstring.key.extract(from: dictionary, contents: source),
+      let bodyStartIndex = declaration.firstIndex(of: "{", excluding: .allGroups)
+      else { return .none }
+    
+    let body = declaration[declaration.index(after: bodyStartIndex)...]
+      .trimmingCharacters(in: .whitespacesAndNewlines)[...]
+    guard body.hasPrefix("get") else { return .none }
+    
+    let getEndIndex = body.index(body.startIndex, offsetBy: "get".count)
+    if getEndIndex < body.endIndex && isIdentifierCharacter(body[getEndIndex]) {
+      return .none
+    }
+    
+    let accessorSuffix = body[getEndIndex...]
+    let effectEndIndex = accessorSuffix.firstIndex(of: "{", excluding: .allGroups)
+      ?? accessorSuffix.firstIndex(of: "}", excluding: .allGroups)
+      ?? accessorSuffix.endIndex
+    return EffectSpecifiers(from: accessorSuffix[..<effectEndIndex])
+  }
+  
+  private static func isIdentifierCharacter(_ character: Character) -> Bool {
+    return character == "_" || character.isLetter || character.isNumber
+  }
 }
 
 extension Variable: Specializable {
-  private init(from variable: Variable, typeName: String) {
+  private init(from variable: Variable,
+               typeName: String,
+               getterEffectSpecifiers: EffectSpecifiers) {
     self.name = variable.name
     self.typeName = typeName
     self.kind = variable.kind
     self.accessLevel = variable.accessLevel
     self.setterAccessLevel = variable.setterAccessLevel
     self.attributes = variable.attributes
+    self.getterEffectSpecifiers = getterEffectSpecifiers
     self.compilationDirectives = variable.compilationDirectives
     self.isOverridable = variable.isOverridable
     self.hasSelfConstraint = variable.hasSelfConstraint
@@ -185,7 +221,10 @@ extension Variable: Specializable {
                                                         context: attributedSerializationContext,
                                                         options: options)
     let specializedTypeName = declaredType.serialize(with: qualifiedTypeNameRequest)
-
-    return Variable(from: self, typeName: specializedTypeName)
+    let specializedGetterEffectSpecifiers = getterEffectSpecifiers.serialized(with: qualifiedTypeNameRequest)
+    
+    return Variable(from: self,
+                    typeName: specializedTypeName,
+                    getterEffectSpecifiers: specializedGetterEffectSpecifiers)
   }
 }

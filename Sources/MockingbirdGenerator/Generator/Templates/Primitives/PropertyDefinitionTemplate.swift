@@ -12,14 +12,16 @@ struct PropertyDefinitionTemplate: Template {
   }
   
   let type: AccessorType
+  let effectSpecifiers: EffectSpecifiers
   let body: String
   
-  init(type: AccessorType, body: String) {
+  init(type: AccessorType, effectSpecifiers: EffectSpecifiers = .none, body: String) {
     self.type = type
+    self.effectSpecifiers = effectSpecifiers
     self.body = body
   }
   
   func render() -> String {
-    return type.keyword + " " + BlockTemplate(body: body).render()
+    return type.keyword + effectSpecifiers.declaration(allowRethrows: false) + " " + BlockTemplate(body: body).render()
   }
 }

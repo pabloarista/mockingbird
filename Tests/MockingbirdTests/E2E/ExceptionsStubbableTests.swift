@@ -19,3 +19,13 @@ private protocol StubbableRethrowingProtocol: RethrowingProtocol, Mock {
     -> Mockable<FunctionDeclaration, (() throws -> Bool) throws -> Bool, Bool>
 }
 extension RethrowingProtocolMock: StubbableRethrowingProtocol {}
+
+#if swift(>=6.0)
+private protocol StubbableTypedThrowingProtocol: Mock {
+  func typedThrowingMethod()
+    -> Mockable<ThrowingFunctionDeclaration, () throws(TypedThrowingError) -> Bool, Bool>
+  func typedThrowingMethod(block: @autoclosure () -> () throws(TypedThrowingError) -> Bool)
+    -> Mockable<ThrowingFunctionDeclaration, (() throws(TypedThrowingError) -> Bool) throws(TypedThrowingError) -> Void, Void>
+}
+extension TypedThrowingProtocolMock: StubbableTypedThrowingProtocol {}
+#endif

@@ -69,6 +69,7 @@ class MockableTypeTemplate: Template {
       "// MARK: - Mocked \(mockableType.name)",
       directiveStart,
       NominalTypeDefinitionTemplate(
+        attributes: mockableType.attributes.safeDeclarations,
         declaration: "public final class \(mockableType.name)Mock",
         genericTypes: genericTypes,
         genericConstraints: mockableType.whereClauses.sorted().map({ specializeTypeName("\($0)") }),

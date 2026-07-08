@@ -14,6 +14,7 @@ struct Method {
   let whereClauses: [WhereClause]
   let parameters: [MethodParameter]
   let attributes: Attributes
+  let effectSpecifiers: EffectSpecifiers
   let compilationDirectives: [CompilationDirective]
   let isOverridable: Bool
   let hasSelfConstraint: Bool
@@ -58,13 +59,15 @@ struct Method {
     
     // Parse declared attributes and parameters.
     let rawParametersDeclaration: Substring?
+    let rawEffectSpecifiers: EffectSpecifiers
     (self.attributes,
-     rawParametersDeclaration) = Method.parseDeclaration(from: dictionary,
-                                                         source: source,
-                                                         isInitializer: isInitializer,
-                                                         kind: kind,
-                                                         rootKind: rootKind,
-                                                         attributes: attributes)
+     rawParametersDeclaration,
+     rawEffectSpecifiers) = Method.parseDeclaration(from: dictionary,
+                                                    source: source,
+                                                    isInitializer: isInitializer,
+                                                    kind: kind,
+                                                    rootKind: rootKind,
+                                                    attributes: attributes)
     
     // Parse return type.
     let (returnType, returnTypeName) = Method.parseReturnType(
@@ -75,6 +78,15 @@ struct Method {
       typealiasRepository: typealiasRepository)
     self.returnType = returnType
     self.returnTypeName = returnTypeName
+    let serializationContext = SerializationRequest
+      .Context(moduleNames: moduleNames,
+               rawType: rawType,
+               rawTypeRepository: rawTypeRepository,
+               typealiasRepository: typealiasRepository)
+    let qualifiedTypeNameRequest = SerializationRequest(method: .moduleQualified,
+                                                        context: serializationContext,
+                                                        options: .standard)
+    self.effectSpecifiers = rawEffectSpecifiers.serialized(with: qualifiedTypeNameRequest)
     
     // Parse generic type constraints and where clauses.
     self.whereClauses = Method.parseWhereClauses(from: dictionary,
@@ -118,6 +130,7 @@ struct Method {
     self.hasSelfConstraint =
       returnTypeName.contains(SerializationRequest.Constants.selfTokenIndicator)
       || parameters.contains(where: { $0.hasSelfConstraints })
+      || effectSpecifiers.hasSelfConstraint
   }
   
   private static func parseDeclaration(from dictionary: StructureDictionary,
@@ -125,9 +138,9 @@ struct Method {
                                        isInitializer: Bool,
                                        kind: SwiftDeclarationKind,
                                        rootKind: SwiftDeclarationKind,
-                                       attributes: Attributes) -> (Attributes, Substring?) {
+                                       attributes: Attributes) -> (Attributes, Substring?, EffectSpecifiers) {
     guard let declaration = SourceSubstring.key.extract(from: dictionary, contents: source)
-      else { return (attributes, nil) }
+      else { return (attributes, nil, .none) }
     
     var fullAttributes = attributes
     var rawParametersDeclaration: Substring?
@@ -157,10 +170,13 @@ struct Method {
       ?? declaration.firstIndex(of: "{", excluding: .allGroups) // Void methods
       ?? declaration.endIndex
     let returnAttributes = declaration[returnAttributesStartIndex..<returnAttributesEndIndex]
-    if returnAttributes.range(of: #"\basync\b"#, options: .regularExpression) != nil {
+    let effectSpecifiers = EffectSpecifiers(from: returnAttributes)
+    if effectSpecifiers.isAsync {
       fullAttributes.insert(.async)
     }
-    if returnAttributes.range(of: #"\bthrows\b"#, options: .regularExpression) != nil {
+    if effectSpecifiers.isRethrowing {
+      fullAttributes.insert(.rethrows)
+    } else if effectSpecifiers.isThrowing {
       fullAttributes.insert(.throws)
     }
     
@@ -174,7 +190,7 @@ struct Method {
       break
     }
     
-    return (fullAttributes, rawParametersDeclaration)
+    return (fullAttributes, rawParametersDeclaration, effectSpecifiers)
   }
   
   private static func isReadOnlySubscript(from dictionary: StructureDictionary,
@@ -332,7 +348,10 @@ extension Method: Comparable {
 }
 
 extension Method: Specializable {
-  private init(from method: Method, returnTypeName: String, parameters: [MethodParameter]) {
+  private init(from method: Method,
+               returnTypeName: String,
+               parameters: [MethodParameter],
+               effectSpecifiers: EffectSpecifiers) {
     self.name = method.name
     self.shortName = method.shortName
     self.returnType = DeclaredType(from: returnTypeName)
@@ -345,6 +364,7 @@ extension Method: Specializable {
     self.whereClauses = method.whereClauses
     self.parameters = parameters
     self.attributes = method.attributes
+    self.effectSpecifiers = effectSpecifiers
     self.compilationDirectives = method.compilationDirectives
     self.isOverridable = method.isOverridable
     self.hasSelfConstraint = method.hasSelfConstraint
@@ -380,6 +400,7 @@ extension Method: Specializable {
                                                         context: attributedSerializationContext,
                                                         options: options)
     let specializedReturnTypeName = declaredType.serialize(with: qualifiedTypeNameRequest)
+    let specializedEffectSpecifiers = effectSpecifiers.serialized(with: qualifiedTypeNameRequest)
     
     // Specialize parameters.
     let specializedParameters = parameters.map({
@@ -393,7 +414,8 @@ extension Method: Specializable {
     
     return Method(from: self,
                   returnTypeName: specializedReturnTypeName,
-                  parameters: specializedParameters)
+                  parameters: specializedParameters,
+                  effectSpecifiers: specializedEffectSpecifiers)
   }
 }
 

@@ -106,6 +106,7 @@ struct Attributes: OptionSet, Hashable {
     
   static let sendable = Attributes(rawValue: 1 << 20)
   static let conventionBlock = Attributes(rawValue: 1 << 21)
+  static let custom = Attributes(rawValue: 1 << 22)
   
   // MARK: Custom attributes
   static let implicit = Attributes(rawValue: 1 << 20)
@@ -126,6 +127,7 @@ extension Attributes {
     case .override: self = .override
     case .objcName: self = .objcName
     case .`optional`: self = .`optional`
+    case ._custom: self = .custom
     default: return nil
     }
   }
@@ -164,6 +166,15 @@ extension Attributes {
       guard let rawAttribute = rawAttributeDictionary[Attributes.attributeKey] as? String,
         let attributeKind = SwiftDeclarationAttributeKind(rawValue: rawAttribute),
         let attribute = Attributes(from: attributeKind) else { continue }
+      if attribute == .custom {
+        guard let source = source,
+          let declaration = SourceSubstring.key.extract(from: rawAttributeDictionary,
+                                                        contents: source),
+          declaration.isGlobalActorAttributeDeclaration else { continue }
+        attributes.insert(declaration)
+        attributes.insert(attribute)
+        continue
+      }
       if attribute.shouldExtractDeclaration, let source = source,
         let declaration = SourceSubstring.key.extract(from: rawAttributeDictionary,
                                                       contents: source) {
@@ -184,6 +195,21 @@ extension Attributes {
     case .available, .objcName: return true
     default: return false
     }
+  }
+}
+
+private extension String {
+  var isGlobalActorAttributeDeclaration: Bool {
+    let declaration = trimmingCharacters(in: .whitespacesAndNewlines)
+    guard declaration.hasPrefix("@") else { return false }
+    
+    guard let name = declaration
+      .dropFirst()
+      .prefix(while: { !$0.isWhitespace && $0 != "(" })
+      .split(separator: ".")
+      .last
+      .map(String.init) else { return false }
+    return name == "MainActor" || name.hasSuffix("Actor")
   }
 }
 
@@ -250,5 +276,94 @@ enum AccessLevel: String, CustomStringConvertible {
     case .internal: return withinSameModule
     case .fileprivate, .private: return false
     }
+  }
+}
+
+struct EffectSpecifiers {
+  enum Throwing {
+    case none
+    case throwing(typeName: String?)
+    case rethrowing
+  }
+  
+  static let none = EffectSpecifiers()
+  
+  let isAsync: Bool
+  let throwing: Throwing
+  
+  init(isAsync: Bool = false, throwing: Throwing = .none) {
+    self.isAsync = isAsync
+    self.throwing = throwing
+  }
+  
+  init(from declaration: Substring) {
+    let attributes = declaration.trimmingCharacters(in: .whitespacesAndNewlines)[...]
+    self.init(
+      isAsync: attributes.range(of: #"\basync\b"#, options: .regularExpression) != nil,
+      throwing: EffectSpecifiers.parseThrowingEffect(from: attributes)
+    )
+  }
+  
+  var isThrowing: Bool {
+    switch throwing {
+    case .none: return false
+    case .throwing, .rethrowing: return true
+    }
+  }
+  
+  var isRethrowing: Bool {
+    switch throwing {
+    case .rethrowing: return true
+    case .none, .throwing: return false
+    }
+  }
+  
+  var throwingTypeName: String? {
+    switch throwing {
+    case .throwing(let typeName): return typeName
+    case .none, .rethrowing: return nil
+    }
+  }
+  
+  var hasSelfConstraint: Bool {
+    return throwingTypeName?.contains(SerializationRequest.Constants.selfTokenIndicator) == true
+  }
+  
+  func declaration(allowRethrows: Bool = true) -> String {
+    var attributes = isAsync ? " async" : ""
+    switch throwing {
+    case .none:
+      break
+    case .throwing(let typeName):
+      attributes += typeName.map({ " throws(\($0))" }) ?? " throws"
+    case .rethrowing:
+      attributes += allowRethrows ? " rethrows" : " throws"
+    }
+    return attributes
+  }
+  
+  func serialized(with request: SerializationRequest) -> EffectSpecifiers {
+    guard let throwingTypeName = throwingTypeName else { return self }
+    let serializedTypeName = DeclaredType(from: throwingTypeName).serialize(with: request)
+    return EffectSpecifiers(isAsync: isAsync, throwing: .throwing(typeName: serializedTypeName))
+  }
+  
+  private static func parseThrowingEffect(from attributes: Substring) -> Throwing {
+    guard attributes.range(of: #"\brethrows\b"#, options: .regularExpression) == nil else {
+      return .rethrowing
+    }
+    guard let throwsRange = attributes.range(of: #"\bthrows\b"#, options: .regularExpression) else {
+      return .none
+    }
+    let suffix = attributes[throwsRange.upperBound...]
+      .trimmingCharacters(in: .whitespacesAndNewlines)[...]
+    guard suffix.first == "(" else { return .throwing(typeName: nil) }
+    
+    let typeStartIndex = suffix.index(after: suffix.startIndex)
+    guard let typeEndIndex = suffix[typeStartIndex...].firstIndex(of: ")", excluding: .allGroups)
+      else { return .throwing(typeName: nil) }
+    let typeName = suffix[typeStartIndex..<typeEndIndex]
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    return .throwing(typeName: typeName.isEmpty ? nil : typeName)
   }
 }

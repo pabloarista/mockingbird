@@ -73,6 +73,39 @@ class StubbingAsyncTests: BaseTestCase {
     verify(await asyncProtocol.asyncThrowingMethod()).wasCalled()
   }
   
+  func testStubAsyncVariable_returnsValue() async {
+    given(await asyncProtocol.getAsyncVariable()) ~> true
+    
+    let result: Bool = await asyncProtocolInstance.asyncVariable
+    
+    XCTAssertTrue(result)
+    verify(await asyncProtocol.getAsyncVariable()).wasCalled()
+  }
+  
+  func testStubThrowingVariable_returnsValue() throws {
+    given(asyncProtocol.getThrowingVariable()) ~> true
+    
+    let result: Bool = try asyncProtocolInstance.throwingVariable
+    
+    XCTAssertTrue(result)
+    verify(asyncProtocol.getThrowingVariable()).wasCalled()
+  }
+  
+  func testStubAsyncThrowingVariable_returnsValue() async throws {
+    given(await asyncProtocol.getAsyncThrowingVariable()) ~> 1
+    
+    let result: Int = try await asyncProtocolInstance.asyncThrowingVariable
+    
+    XCTAssertEqual(result, 1)
+    verify(await asyncProtocol.getAsyncThrowingVariable()).wasCalled()
+  }
+  
+  func testStubAsyncThrowingVariable_throwsError() async throws {
+    given(await asyncProtocol.getAsyncThrowingVariable()) ~> { () throws -> Int in throw FakeError() }
+    await XCTAssertThrowsAsyncError(try await asyncProtocolInstance.asyncThrowingVariable)
+    verify(await asyncProtocol.getAsyncThrowingVariable()).wasCalled()
+  }
+  
   func testStubAsyncClosureMethod() async throws {
     given(await asyncProtocol.asyncClosureMethod(block: any())).willReturn()
     await asyncProtocolInstance.asyncClosureMethod(block: { true })

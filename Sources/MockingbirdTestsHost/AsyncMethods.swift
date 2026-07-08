@@ -19,6 +19,15 @@ protocol AsyncProtocol {
   
   @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
   func asyncClosureThrowingMethod(block: () async throws -> Bool) async throws -> Bool
+  
+  @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+  var asyncVariable: Bool { get async }
+  
+  @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+  var throwingVariable: Bool { get throws }
+  
+  @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+  var asyncThrowingVariable: Int { get async throws }
 }
 
 class AsyncClass {
@@ -40,6 +49,21 @@ class AsyncClass {
   @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
   func asyncClosureThrowingMethod(block: () async throws -> Bool) async throws -> Bool {
     fatalError()
+  }
+  
+  @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+  var asyncVariable: Bool {
+    get async { fatalError() }
+  }
+  
+  @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+  var throwingVariable: Bool {
+    get throws { fatalError() }
+  }
+  
+  @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+  var asyncThrowingVariable: Int {
+    get async throws { fatalError() }
   }
   
   // Test for false positives.

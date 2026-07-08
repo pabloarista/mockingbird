@@ -181,6 +181,18 @@ class DeclaredTypeTests: XCTestCase {
     XCTAssert(actual.isFunction)
   }
   
+  func testDeclaredType_parsesTypedThrowingFunctionType() {
+    let actual = DeclaredType(from: "() throws(MyError) -> Bool")
+    XCTAssertEqual(String(reflecting: actual), "DeclaredType(Single(Function(() throws(MyError) -> DeclaredType(Single(Bool)))))")
+    XCTAssert(actual.isFunction)
+  }
+  
+  func testDeclaredType_parsesAsyncTypedThrowingFunctionType() {
+    let actual = DeclaredType(from: "() async throws(MyError) -> Bool")
+    XCTAssertEqual(String(reflecting: actual), "DeclaredType(Single(Function(() async throws(MyError) -> DeclaredType(Single(Bool)))))")
+    XCTAssert(actual.isFunction)
+  }
+  
   func testDeclaredType_parsesChainedThrowingFunctionTypes() {
     let actual = DeclaredType(from: "() throws -> () throws -> Bool")
     XCTAssertEqual(String(reflecting: actual), "DeclaredType(Single(Function(() throws -> DeclaredType(Single(Function(() throws -> DeclaredType(Single(Bool))))))))")

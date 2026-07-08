@@ -10,3 +10,14 @@ protocol RethrowingProtocol {
   func rethrowingMethod(block: () throws -> Bool) rethrows
   func rethrowingMethod(block: () throws -> Bool) rethrows -> Bool
 }
+
+#if swift(>=6.0)
+enum TypedThrowingError: Error {
+  case failure
+}
+
+protocol TypedThrowingProtocol {
+  func typedThrowingMethod() throws(TypedThrowingError) -> Bool
+  func typedThrowingMethod(block: () throws(TypedThrowingError) -> Bool) throws(TypedThrowingError)
+}
+#endif

@@ -53,11 +53,11 @@ class SubscriptMethodTemplate: MethodTemplate {
                       invocationArguments: invocationArguments).render())
     
     let setterShortSignature = method.parameters.isEmpty ? nil : """
-    ()\(method.isThrowing ? " throws" : "") -> Void
+    ()\(returnTypeAttributesForMatching) -> Void
     """
     let setterParameterTypes = matchableParameterTypes + [matchableReturnType]
     let setterLongSignature = """
-    (\(separated: setterParameterTypes))\(method.isThrowing ? " throws" : "") -> Void
+    (\(separated: setterParameterTypes))\(returnTypeAttributesForMatching) -> Void
     """
     let setterInvocationArguments = invocationArguments + [(nil, "newValue")]
     let setterDefinition = PropertyDefinitionTemplate(
@@ -100,7 +100,7 @@ class SubscriptMethodTemplate: MethodTemplate {
     let getterReturnType = matchableReturnType
     let setterReturnType = "Void"
     
-    let modifiers = method.isThrowing ? " throws" : ""
+    let modifiers = returnTypeAttributesForMatching
     
     let getterInvocationType = """
     (\(separated: matchableParameterTypes))\(modifiers) -> \(getterReturnType)

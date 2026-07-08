@@ -8,6 +8,11 @@ protocol DeclarationAttributesProtocol {
   func availableMethod(param: String) -> Bool
 }
 
+@MainActor protocol GlobalActorProtocol {
+  var globalActorVariable: String { get }
+  func globalActorMethod() -> String
+}
+
 class DeclarationAttributesClass {
   @available(iOS 10.0, *)
   var availableVariable: String { return "" }

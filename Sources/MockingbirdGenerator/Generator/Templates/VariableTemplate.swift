@@ -64,19 +64,20 @@ class VariableTemplate: Template {
   var mockedDeclaration: String {
     let getterDefinition = PropertyDefinitionTemplate(
       type: .getter,
+      effectSpecifiers: variable.getterEffectSpecifiers,
       body: !context.shouldGenerateThunks ? MockableTypeTemplate.Constants.thunkStub :
         ThunkTemplate(mockableType: context.mockableType,
                       invocation: getterInvocation,
                       shortSignature: nil,
-                      longSignature: "() -> \(matchableType)",
+                      longSignature: "()\(getterReturnTypeAttributesForMatching) -> \(matchableType)",
                       returnType: matchableType,
                       isBridged: true,
-                      isAsync: false,
-                      isThrowing: false,
+                      isAsync: variable.getterEffectSpecifiers.isAsync,
+                      isThrowing: variable.getterEffectSpecifiers.isThrowing,
                       isStatic: variable.kind.typeScope.isStatic,
                       isOptional: variable.attributes.contains(.optional),
                       callMember: { scope in
-                        return "\(scope).\(backticked: self.variable.name)"
+                        return "\(self.getterInvocationPrefix)\(scope).\(backticked: self.variable.name)"
                       },
                       invocationArguments: []).render())
     let setterDefinition = PropertyDefinitionTemplate(
@@ -119,7 +120,7 @@ class VariableTemplate: Template {
   
   var synthesizedDeclarations: String {
     let getterGenericTypes = ["\(Declaration.propertyGetterDeclaration)",
-                              "() -> \(matchableType)",
+                              "()\(getterReturnTypeAttributesForMatching) -> \(matchableType)",
                               matchableType]
     let setterGenericTypes = ["\(Declaration.propertySetterDeclaration)",
                               "(\(matchableType)) -> Void",
@@ -128,7 +129,7 @@ class VariableTemplate: Template {
     let getterReturnType = "Mockingbird.Mockable<\(separated: getterGenericTypes)>"
     let getterDefinition = FunctionDefinitionTemplate(
       attributes: variable.attributes.safeDeclarations,
-      declaration: "public \(modifiers)func get\(capitalizedName)() -> \(getterReturnType)",
+      declaration: "public \(modifiers)func get\(capitalizedName)()\(getterReturnTypeAttributesForMockableDeclaration) -> \(getterReturnType)",
       body: !context.shouldGenerateThunks ? MockableTypeTemplate.Constants.thunkStub : """
       return \(ObjectInitializationTemplate(
                 name: "Mockingbird.Mockable",
@@ -158,6 +159,21 @@ class VariableTemplate: Template {
   
   lazy var modifiers: String = {
     return variable.kind.typeScope.isStatic ? "class " : ""
+  }()
+  
+  lazy var getterReturnTypeAttributesForMatching: String = {
+    return variable.getterEffectSpecifiers.declaration(allowRethrows: false)
+  }()
+  
+  lazy var getterReturnTypeAttributesForMockableDeclaration: String = {
+    return variable.getterEffectSpecifiers.isAsync ? " async" : ""
+  }()
+  
+  lazy var getterInvocationPrefix: String = {
+    var prefix = ""
+    if variable.getterEffectSpecifiers.isThrowing { prefix += "try " }
+    if variable.getterEffectSpecifiers.isAsync { prefix += "await " }
+    return prefix
   }()
   
   // Keep this in sync with `MockingbirdFramework.Invocation.Constants.getterSuffix`
